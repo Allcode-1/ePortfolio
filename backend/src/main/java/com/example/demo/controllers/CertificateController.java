@@ -35,6 +35,12 @@ public class CertificateController {
         return certificateService.getUserCertificates(user);
     }
 
+    @PutMapping("/{id}")
+    public Certificate update(@PathVariable Long id, @RequestBody @Valid CertificateRequest request, @AuthenticationPrincipal Jwt jwt) {
+        User user = userService.getOrCreateUser(jwt.getSubject(), jwt.getClaimAsString("email"), "User");
+        return certificateService.updateCertificate(id, request, user);
+    }
+
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
         User user = userService.getOrCreateUser(jwt.getSubject(), jwt.getClaimAsString("email"), "User");

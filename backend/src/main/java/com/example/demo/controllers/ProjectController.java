@@ -47,4 +47,16 @@ public class ProjectController {
         // return only this user's projects
         return projectService.getUserProjects(user);
     }
+
+    @PutMapping("/{id}")
+    public Project updateProject(@PathVariable Long id, @RequestBody @Valid ProjectDTO dto, @AuthenticationPrincipal Jwt jwt) {
+        User user = userService.getOrCreateUser(jwt.getSubject(), jwt.getClaimAsString("email"), "User");
+        return projectService.updateProject(id, dto, user);
+    }
+
+    @DeleteMapping("/{id}")
+    public void deleteProject(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        User user = userService.getOrCreateUser(jwt.getSubject(), jwt.getClaimAsString("email"), "User");
+        projectService.deleteProject(id, user);
+    }
 }

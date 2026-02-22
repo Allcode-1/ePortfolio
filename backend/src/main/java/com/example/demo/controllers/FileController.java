@@ -17,16 +17,13 @@ public class FileController {
         this.cloudinaryService = cloudinaryService;
     }
 
-    @PostMapping("/upload")
+    @PostMapping(value = "/upload", consumes = "multipart/form-data")
     public String upload(
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal Jwt jwt 
     ) {
-        // get unique user ID from clerk JWT token
         String clerkId = jwt.getSubject();
-        
         System.out.println("Файл загружает пользователь с ID: " + clerkId);
-        
         return cloudinaryService.uploadFile(file);
     }
 }

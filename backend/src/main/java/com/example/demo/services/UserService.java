@@ -3,6 +3,9 @@ package com.example.demo.services;
 import com.example.demo.dto.PortfolioResponse;
 import com.example.demo.models.User;
 import com.example.demo.repositories.*;
+
+import jakarta.transaction.Transactional;
+
 import org.springframework.stereotype.Service;
 
 @Service
@@ -47,5 +50,13 @@ public class UserService {
         response.setCertificates(certificateRepository.findByUser(user));
 
         return response;
+    }
+
+    @Transactional
+    public void deleteUser(String clerkId) {
+        User user = userRepository.findById(clerkId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        userRepository.delete(user);
     }
 }

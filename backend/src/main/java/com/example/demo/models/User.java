@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 @Entity
 @Table(name = "users")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
@@ -16,12 +18,15 @@ public class User {
     private String fullName;
     private boolean isPublic = false;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<Project> projects;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private List<Certificate> certificates;
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private CV cv;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-    private CV pinnedCv;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<Certificate> certificates;
 }

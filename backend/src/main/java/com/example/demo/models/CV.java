@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 @Entity
 @Table(name = "cvs")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor
@@ -28,12 +31,15 @@ public class CV {
     private List<String> skills;
 
     @OneToMany(mappedBy = "cv", cascade = CascadeType.ALL)
+    @JsonManagedReference
     private List<Experience> experiences;
 
     @OneToMany(mappedBy = "cv", cascade = CascadeType.ALL)
+    @JsonManagedReference
     private List<Education> educations;
 
     @OneToOne
     @JoinColumn(name = "user_id")
+    @JsonIgnore
     private User user;
 }

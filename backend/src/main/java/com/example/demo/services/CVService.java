@@ -63,4 +63,15 @@ public class CVService {
 
         return savedCv;
     }
+
+    @Transactional
+    public void deleteCV(User user) {
+        CV cv = cvRepository.findByUser(user)
+            .orElseThrow(() -> new RuntimeException("CV not found for this user"));
+        
+        experienceRepository.deleteByCv(cv);
+        educationRepository.deleteByCv(cv);
+        
+        cvRepository.delete(cv);
+    }
 }

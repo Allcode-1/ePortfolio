@@ -1,5 +1,7 @@
 package com.example.demo.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,5 +17,6 @@ public class Experience {
     
     @ManyToOne
     @JoinColumn(name = "cv_id")
+    @JsonIgnore
     private CV cv;
 }
