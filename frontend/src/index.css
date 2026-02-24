@@ -1,7 +1,168 @@
 @import "tailwindcss";
 
+:root {
+  --bg: #f3f5f9;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --text: #0f172a;
+  --muted: #5b667a;
+  --border: #d8e0eb;
+  --primary: #4f46e5;
+  --success: #059669;
+  --danger: #dc2626;
+}
+
+[data-theme='dark'] {
+  --bg: #0b1220;
+  --surface: #121b2b;
+  --surface-soft: #182236;
+  --text: #e8eefc;
+  --muted: #96a6c1;
+  --border: #26364d;
+  --primary: #7c7dff;
+  --success: #10b981;
+  --danger: #f43f5e;
+}
+
+[data-theme='ocean'] {
+  --bg: #e0f2fe;
+  --surface: #f8fafc;
+  --surface-soft: #ecfeff;
+  --text: #0f172a;
+  --muted: #0f4c68;
+  --border: #bae6fd;
+  --primary: #0369a1;
+  --success: #0d9488;
+  --danger: #be123c;
+}
+
+[data-theme='sunset'] {
+  --bg: #fff7ed;
+  --surface: #fffbeb;
+  --surface-soft: #fff1f2;
+  --text: #3f1d1d;
+  --muted: #7c2d12;
+  --border: #fed7aa;
+  --primary: #ea580c;
+  --success: #16a34a;
+  --danger: #dc2626;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  @apply bg-[#EFEFEF];
+  background: var(--bg);
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent;
+}
+
+@layer utilities {
+  .app-bg {
+    background:
+      radial-gradient(1200px 600px at 100% -10%, color-mix(in srgb, var(--primary) 12%, transparent), transparent 55%),
+      radial-gradient(900px 500px at -10% 0%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 58%),
+      var(--bg);
+  }
+
+  .surface {
+    background: var(--surface);
+  }
+
+  .surface-soft {
+    background: var(--surface-soft);
+  }
+
+  .text-main {
+    color: var(--text);
+  }
+
+  .text-muted {
+    color: var(--muted);
+  }
+
+  .border-app {
+    border-color: var(--border);
+  }
+
+  .bg-primary-app {
+    background: var(--primary);
+  }
+
+  .text-primary-app {
+    color: var(--primary);
+  }
+
+  .rounded-soft {
+    border-radius: 24px;
+  }
+
+  .rounded-tile {
+    border-radius: 16px;
+  }
+
+  .shadow-app {
+    box-shadow: 0 14px 40px color-mix(in srgb, #0f172a 12%, transparent);
+  }
+
+  .shadow-soft {
+    box-shadow: 0 6px 24px color-mix(in srgb, #0f172a 8%, transparent);
+  }
+
+  .input-modern {
+    width: 100%;
+    height: 44px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    padding: 0 12px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .input-modern:focus {
+    border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+  }
+
+  .textarea-modern {
+    width: 100%;
+    min-height: 90px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    padding: 10px 12px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .textarea-modern:focus {
+    border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+  }
+
+  .chip-btn {
+    height: 30px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    padding: 0 10px;
+    background: color-mix(in srgb, var(--surface) 80%, transparent);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 16px;
+    transition: all 0.2s ease;
+  }
+
+  .chip-btn:hover {
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+    color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  }
 }

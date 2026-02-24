@@ -3,6 +3,7 @@ package com.example.demo.services;
 import com.example.demo.models.*;
 import com.example.demo.repositories.*;
 import com.example.demo.dto.cv.CVSaveRequest;
+import com.example.demo.enums.NotificationType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
@@ -12,18 +13,22 @@ public class CVService {
     private final CVRepository cvRepository;
     private final ExperienceRepository experienceRepository;
     private final EducationRepository educationRepository; // Добавили
+    private final NotificationService notificationService;
 
     public CVService(CVRepository cvRepository, 
                      ExperienceRepository experienceRepository,
-                     EducationRepository educationRepository) {
+                     EducationRepository educationRepository,
+                     NotificationService notificationService) {
         this.cvRepository = cvRepository;
         this.experienceRepository = experienceRepository;
         this.educationRepository = educationRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
     public CV saveOrUpdateCV(User user, CVSaveRequest request) {
         CV cv = cvRepository.findByUser(user).orElse(new CV());
+        boolean isNewCv = cv.getId() == null;
         cv.setUser(user);
         cv.setProfession(request.getProfession());
         cv.setContactEmail(request.getContactEmail());
@@ -59,6 +64,15 @@ public class CVService {
                 edu.setCv(savedCv);
                 educationRepository.save(edu);
             });
+        }
+
+        if (isNewCv) {
+            notificationService.createOnce(
+                user,
+                NotificationType.FIRST_CV_CREATED,
+                "First CV created",
+                "Great start. Your first CV is saved and ready for sharing."
+            );
         }
 
         return savedCv;

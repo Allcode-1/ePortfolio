@@ -8,4 +8,5 @@ import java.util.List;
 public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findByUser(User user);
     List<Project> findByUserAndIsPinnedTrue(User user); // to get only pinned ones
+    long countByUser(User user);
 }

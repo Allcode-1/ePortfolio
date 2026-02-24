@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.time.LocalDate;
+
 @Data
 public class ProjectDTO {
     @NotBlank(message = "Title is required")
@@ -15,5 +17,12 @@ public class ProjectDTO {
 
     private String imageUrl;
     private String githubUrl;
+    private String liveUrl;
+    private String role;
+    private String stackSummary;
+    private String projectType;
+    private String status;
+    private LocalDate startedAt;
+    private LocalDate finishedAt;
     private boolean isPinned;
 }

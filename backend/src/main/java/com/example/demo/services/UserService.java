@@ -1,6 +1,7 @@
 package com.example.demo.services;
 
 import com.example.demo.dto.PortfolioResponse;
+import com.example.demo.enums.NotificationType;
 import com.example.demo.models.User;
 import com.example.demo.repositories.*;
 
@@ -15,15 +16,18 @@ public class UserService {
     private final ProjectRepository projectRepository;
     private final CVRepository cvRepository;
     private final CertificateRepository certificateRepository;
+    private final NotificationService notificationService;
 
     public UserService(UserRepository userRepository, 
                        ProjectRepository projectRepository, 
                        CVRepository cvRepository, 
-                       CertificateRepository certificateRepository) {
+                       CertificateRepository certificateRepository,
+                       NotificationService notificationService) {
         this.userRepository = userRepository;
         this.projectRepository = projectRepository;
         this.cvRepository = cvRepository;
         this.certificateRepository = certificateRepository;
+        this.notificationService = notificationService;
     }
 
     public User getOrCreateUser(String clerkId, String email, String fullName) {
@@ -33,7 +37,14 @@ public class UserService {
             newUser.setEmail(email);
             newUser.setFullName(fullName);
             newUser.setPublic(false); // by default: profile is hidden
-            return userRepository.save(newUser);
+            User saved = userRepository.save(newUser);
+            notificationService.createOnce(
+                saved,
+                NotificationType.WELCOME,
+                "Welcome to ePortfolio",
+                "Your workspace is ready. Start by adding your first CV, project or certificate."
+            );
+            return saved;
         });
     }
 

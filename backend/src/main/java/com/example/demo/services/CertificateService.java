@@ -2,6 +2,7 @@ package com.example.demo.services;
 
 import com.example.demo.models.Certificate;
 import com.example.demo.models.User;
+import com.example.demo.enums.NotificationType;
 import com.example.demo.repositories.CertificateRepository;
 
 import jakarta.transaction.Transactional;
@@ -13,20 +14,29 @@ import java.util.List;
 @Service
 public class CertificateService {
     private final CertificateRepository certificateRepository;
+    private final NotificationService notificationService;
 
-    public CertificateService(CertificateRepository certificateRepository) {
+    public CertificateService(CertificateRepository certificateRepository, NotificationService notificationService) {
         this.certificateRepository = certificateRepository;
+        this.notificationService = notificationService;
     }
 
     public Certificate addCertificate(User user, CertificateRequest request) {
         Certificate cert = new Certificate();
-        cert.setName(request.getName());
-        cert.setIssuedBy(request.getIssuedBy());
-        cert.setImageUrl(request.getImageUrl());
-        cert.setIssueDate(request.getIssueDate());
+        applyRequest(cert, request);
         cert.setUser(user);
-        
-        return certificateRepository.save(cert);
+        Certificate saved = certificateRepository.save(cert);
+
+        if (certificateRepository.countByUser(user) == 1L) {
+            notificationService.createOnce(
+                user,
+                NotificationType.FIRST_CERTIFICATE_ADDED,
+                "First certificate added",
+                "Your first certificate is now part of your portfolio."
+            );
+        }
+
+        return saved;
     }
 
     public List<Certificate> getUserCertificates(User user) {
@@ -42,10 +52,7 @@ public class CertificateService {
             throw new RuntimeException("Access denied");
         }
 
-        cert.setName(request.getName());
-        cert.setIssuedBy(request.getIssuedBy());
-        cert.setImageUrl(request.getImageUrl());
-        cert.setIssueDate(request.getIssueDate());
+        applyRequest(cert, request);
 
         return certificateRepository.save(cert);
     }
@@ -59,5 +66,21 @@ public class CertificateService {
         }
         
         certificateRepository.delete(cert);
+    }
+
+    private void applyRequest(Certificate cert, CertificateRequest request) {
+        cert.setName(request.getName());
+        cert.setTitle(request.getName());
+        cert.setIssuedBy(request.getIssuedBy());
+        cert.setImageUrl(request.getImageUrl());
+        cert.setFileUrl(request.getImageUrl());
+        cert.setIssueDate(request.getIssueDate());
+        cert.setDescription(request.getDescription());
+        cert.setCity(request.getCity());
+        cert.setPlace(request.getPlace());
+        cert.setEventName(request.getEventName());
+        cert.setEventType(request.getEventType());
+        cert.setImportance(request.getImportance() != null ? request.getImportance() : 0);
+        cert.setPinned(request.getPinned() != null && request.getPinned());
     }
 }

@@ -15,4 +15,11 @@ public class CertificateRequest {
     private String imageUrl; 
 
     private String issueDate;
+    private String description;
+    private String city;
+    private String place;
+    private String eventName;
+    private String eventType;
+    private Integer importance;
+    private Boolean pinned;
 }

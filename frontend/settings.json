@@ -1,0 +1,11 @@
+{
+  "tailwindCSS.files.exclude": [
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/dist/**",
+    "**/build/**"
+  ],
+  "tailwindCSS.content": [
+    "./src/**/*.{js,jsx,ts,tsx,html}"
+  ]
+}
