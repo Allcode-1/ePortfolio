@@ -5,14 +5,17 @@ COPY pom.xml ./
 COPY .mvn .mvn
 COPY mvnw mvnw
 COPY mvnw.cmd mvnw.cmd
-COPY src src
+RUN chmod +x mvnw && ./mvnw -q -DskipTests dependency:go-offline
 
-RUN chmod +x mvnw && ./mvnw -DskipTests package
+COPY src src
+RUN ./mvnw -DskipTests clean package
 
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
+ENV JAVA_OPTS=""
+
 COPY --from=build /app/target/*.jar /app/app.jar
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

@@ -4,6 +4,19 @@ import type { CvDocument } from '../types/cvDocument';
 
 const STORAGE_PREFIX = 'eportfolio.cvDocuments.v1';
 
+const normalizeDocuments = (documents: CvDocument[]): CvDocument[] =>
+  documents.map((document) => ({
+    ...document,
+    experiences: (document.experiences ?? []).map((item) => ({
+      ...item,
+      rawPeriod: item.rawPeriod ?? '',
+    })),
+    educations: (document.educations ?? []).map((item) => ({
+      ...item,
+      rawPeriod: item.rawPeriod ?? '',
+    })),
+  }));
+
 const readDocuments = (storageKey: string): CvDocument[] => {
   try {
     const raw = window.localStorage.getItem(storageKey);
@@ -13,7 +26,7 @@ const readDocuments = (storageKey: string): CvDocument[] => {
     }
 
     const parsed = JSON.parse(raw) as CvDocument[];
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) ? normalizeDocuments(parsed) : [];
   } catch {
     return [];
   }
@@ -90,7 +103,7 @@ export const useCvDocuments = () => {
   };
 
   return {
-    documents: ensureSinglePrimary(documents).sort((a, b) => {
+    documents: [...ensureSinglePrimary(documents)].sort((a, b) => {
       if (a.isPrimary === b.isPrimary) {
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
       }

@@ -7,6 +7,9 @@ import com.example.demo.enums.NotificationType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
+import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CVService {
@@ -34,8 +37,12 @@ public class CVService {
         cv.setContactEmail(request.getContactEmail());
         cv.setCity(request.getCity());
         cv.setPhone(request.getPhone());
-        
-        cv.setSkills(new ArrayList<>(request.getSkills()));
+
+        List<String> normalizedSkills = request.getSkills() == null
+            ? new ArrayList<>()
+            : new ArrayList<>(request.getSkills());
+        normalizedSkills.removeIf(skill -> skill == null || skill.isBlank());
+        cv.setSkills(normalizedSkills);
 
         if (cv.getId() != null) {
             experienceRepository.deleteByCv(cv);
@@ -59,6 +66,7 @@ public class CVService {
             request.getEducations().forEach(dto -> {
                 Education edu = new Education();
                 edu.setInstitution(dto.getInstitution());
+                edu.setProfession(dto.getProfession());
                 edu.setDegree(dto.getDegree());
                 edu.setYear(dto.getYear());
                 edu.setCv(savedCv);
@@ -78,10 +86,14 @@ public class CVService {
         return savedCv;
     }
 
+    public CV getCV(User user) {
+        return cvRepository.findByUser(user).orElse(null);
+    }
+
     @Transactional
     public void deleteCV(User user) {
         CV cv = cvRepository.findByUser(user)
-            .orElseThrow(() -> new RuntimeException("CV not found for this user"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "CV not found for this user"));
         
         experienceRepository.deleteByCv(cv);
         educationRepository.deleteByCv(cv);

@@ -4,8 +4,10 @@ import com.example.demo.dto.GithubRepoInfoResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.net.URI;
@@ -54,7 +56,13 @@ public class GithubService {
             HttpResponse<String> response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() >= 400) {
-                throw new RuntimeException("GitHub repository not found or API rate limit exceeded.");
+                if (response.statusCode() == 404) {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "GitHub repository not found.");
+                }
+                if (response.statusCode() == 429) {
+                    throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "GitHub API rate limit exceeded.");
+                }
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to fetch repository data from GitHub.");
             }
 
             JsonNode root = objectMapper.readTree(response.body());
@@ -72,33 +80,33 @@ public class GithubService {
             if (ex instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
-            throw new RuntimeException("Failed to fetch GitHub repository details.", ex);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to fetch GitHub repository details.");
         }
     }
 
     private RepoPath extractRepoPath(String repoUrl) {
         if (!StringUtils.hasText(repoUrl)) {
-            throw new RuntimeException("GitHub URL is required.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "GitHub URL is required.");
         }
 
         String normalized = repoUrl.trim();
         Matcher matcher = REPO_URL_PATTERN.matcher(normalized);
 
         if (!matcher.find()) {
-            throw new RuntimeException("Invalid GitHub URL. Example: https://github.com/owner/repository");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid GitHub URL. Example: https://github.com/owner/repository");
         }
 
         String owner = matcher.group(1);
         String repo = matcher.group(2).replaceAll("\\.git$", "");
 
         if (!StringUtils.hasText(owner) || !StringUtils.hasText(repo)) {
-            throw new RuntimeException("Invalid GitHub URL. Example: https://github.com/owner/repository");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid GitHub URL. Example: https://github.com/owner/repository");
         }
 
         try {
             new URI("https://github.com/" + owner + "/" + repo);
         } catch (URISyntaxException ex) {
-            throw new RuntimeException("Invalid GitHub URL. Example: https://github.com/owner/repository");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid GitHub URL. Example: https://github.com/owner/repository");
         }
 
         return new RepoPath(owner, repo);

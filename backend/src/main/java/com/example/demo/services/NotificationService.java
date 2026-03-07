@@ -5,8 +5,11 @@ import com.example.demo.models.Notification;
 import com.example.demo.models.User;
 import com.example.demo.repositories.NotificationRepository;
 import com.example.demo.repositories.UserRepository;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,7 +36,7 @@ public class NotificationService {
     @Transactional
     public Notification markAsRead(Long id, User user) {
         Notification notification = notificationRepository.findByIdAndUser(id, user)
-            .orElseThrow(() -> new RuntimeException("Notification not found"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found"));
 
         if (!notification.isRead()) {
             notification.setRead(true);
@@ -73,7 +76,11 @@ public class NotificationService {
             return;
         }
 
-        create(user, type, title, message);
+        try {
+            create(user, type, title, message);
+        } catch (DataIntegrityViolationException ignored) {
+            // unique constraint can be hit under concurrent requests; this is safe to ignore for create-once flow
+        }
     }
 
     public void createOnceByUserId(String userId, NotificationType type, String title, String message) {

@@ -2,12 +2,12 @@ import { useAuth, useUser } from '@clerk/clerk-react';
 import { ArrowLeft, FileUp, LoaderCircle, Plus, Search, Trash2, WandSparkles } from 'lucide-react';
 import { type ChangeEvent, type FormEvent, useMemo, useState } from 'react';
 import { aiApi } from '../api/ai';
+import { analyticsApi } from '../api/analytics';
 import { certificateApi } from '../api/certificates';
 import { citySuggestions } from '../constants/suggestions';
 import { useCertificates } from '../hooks/useCertificates';
 import { useI18n } from '../i18n/useI18n';
 import type { Certificate } from '../types/certificate';
-import { bumpAnalytics } from '../utils/analytics';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 
 type CertificateForm = {
@@ -592,7 +592,7 @@ const CertificatesPage = () => {
                   rel="noreferrer"
                   onClick={() => {
                     if (user?.id) {
-                      bumpAnalytics(user.id, 'certificateFileOpens');
+                      void analyticsApi.trackMyEvent('certificateFileOpens', getToken).catch(() => undefined);
                     }
                   }}
                   className="h-[38px] px-4 rounded-[12px] border border-app text-h5 text-main inline-flex items-center"

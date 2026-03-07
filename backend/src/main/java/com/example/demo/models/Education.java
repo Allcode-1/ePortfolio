@@ -12,7 +12,9 @@ public class Education {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String institution; // University/College name
+    private String profession;  // Major / specialization
     private String degree;      // degree/specialization
+    @Column(name = "education_year")
     private String year;        // graduation year
     
     @ManyToOne

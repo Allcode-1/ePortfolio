@@ -2,14 +2,14 @@ import { useAuth, useClerk, useUser } from '@clerk/clerk-react';
 import { Bell, Copy, Globe2, ShieldCheck, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { analyticsApi } from '../api/analytics';
 import { usersApi } from '../api/users';
 import { themeOptions } from '../types/theme';
 import { useAppSettings } from '../hooks/useAppSettings';
 import { useTheme } from '../hooks/useTheme';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
-import type { PublicProfileTheme } from '../types/appSettings';
+import type { AccountVisibility, PublicProfileTheme } from '../types/appSettings';
 import { getPublicProfileLink } from '../utils/publicProfile';
-import { bumpAnalytics } from '../utils/analytics';
 import { useI18n } from '../i18n/useI18n';
 
 const profileThemeOptions: Array<{ id: PublicProfileTheme; label: string; preview: string }> = [
@@ -25,7 +25,7 @@ const SettingsPage = () => {
   const { user } = useUser();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
-  const { settings, patchSettings } = useAppSettings();
+  const { settings, patchSettings, setAccountVisibility } = useAppSettings();
   const { t, language } = useI18n();
 
   const [status, setStatus] = useState<string | null>(null);
@@ -34,6 +34,17 @@ const SettingsPage = () => {
   const [linkState, setLinkState] = useState<string | null>(null);
 
   const publicLink = user?.id ? getPublicProfileLink(user.id, settings.publicProfileTheme) : '';
+
+  const handleVisibilityChange = async (visibility: AccountVisibility) => {
+    setError(null);
+
+    try {
+      await setAccountVisibility(visibility);
+      setStatus(visibility === 'public' ? 'Visibility changed to Public.' : 'Visibility changed to Private.');
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, 'Failed to update profile visibility.'));
+    }
+  };
 
   const handleDeleteAccount = async () => {
     setError(null);
@@ -135,7 +146,7 @@ const SettingsPage = () => {
                       return;
                     }
                     void navigator.clipboard.writeText(publicLink);
-                    bumpAnalytics(user.id, 'shareClicks');
+                    void analyticsApi.trackMyEvent('shareClicks', getToken).catch(() => undefined);
                     setLinkState('Public link copied');
                     window.setTimeout(() => setLinkState(null), 1600);
                   }}
@@ -175,27 +186,25 @@ const SettingsPage = () => {
               Privacy
             </h3>
             <div className="space-y-3 mt-4">
-              <button
-                type="button"
-                onClick={() => {
-                  patchSettings({ accountVisibility: 'private' });
-                  setStatus('Visibility changed to Private.');
-                }}
-                className={`w-full rounded-[14px] border px-4 py-3 text-left surface ${
-                  settings.accountVisibility === 'private' ? 'border-primary-app' : 'border-app'
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleVisibilityChange('private');
+                  }}
+                  className={`w-full rounded-[14px] border px-4 py-3 text-left surface ${
+                    settings.accountVisibility === 'private' ? 'border-primary-app' : 'border-app'
                 }`}
               >
                 <p className="text-h4 text-main">Private profile</p>
                 <p className="text-h5 text-muted mt-1">Only you can access your profile details.</p>
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  patchSettings({ accountVisibility: 'public' });
-                  setStatus('Visibility changed to Public.');
-                }}
-                className={`w-full rounded-[14px] border px-4 py-3 text-left surface ${
-                  settings.accountVisibility === 'public' ? 'border-primary-app' : 'border-app'
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleVisibilityChange('public');
+                  }}
+                  className={`w-full rounded-[14px] border px-4 py-3 text-left surface ${
+                    settings.accountVisibility === 'public' ? 'border-primary-app' : 'border-app'
                 }`}
               >
                 <p className="text-h4 text-main">Public profile</p>

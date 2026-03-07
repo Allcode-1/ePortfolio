@@ -1,4 +1,5 @@
 import { useUser } from '@clerk/clerk-react';
+import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import MainLayout from './components/layout/MainLayout';
 import { AppSettingsProvider } from './context/AppSettingsProvider';
@@ -13,6 +14,16 @@ import ProjectsPage from './pages/ProjectsPage';
 import PublicPortfolioPage from './pages/PublicPortfolioPage';
 import SettingsPage from './pages/SettingsPage';
 import StatisticsPage from './pages/StatisticsPage';
+
+const RequireAuth = ({ children }: { children: ReactNode }) => {
+  const { isSignedIn } = useUser();
+
+  if (!isSignedIn) {
+    return <Navigate to="/info" replace />;
+  }
+
+  return <>{children}</>;
+};
 
 const App = () => {
   const { isLoaded } = useUser();
@@ -33,13 +44,62 @@ const App = () => {
             <Route element={<MainLayout />}>
               <Route index element={<Navigate to="/info" replace />} />
               <Route path="/info" element={<InfoPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/certificates" element={<CertificatesPage />} />
-              <Route path="/cv-builder" element={<CvBuilderPage />} />
-              <Route path="/projects" element={<ProjectsPage />} />
-              <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-              <Route path="/statistics" element={<StatisticsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <RequireAuth>
+                    <DashboardPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/certificates"
+                element={
+                  <RequireAuth>
+                    <CertificatesPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/cv-builder"
+                element={
+                  <RequireAuth>
+                    <CvBuilderPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/projects"
+                element={
+                  <RequireAuth>
+                    <ProjectsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/projects/:projectId"
+                element={
+                  <RequireAuth>
+                    <ProjectDetailPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/statistics"
+                element={
+                  <RequireAuth>
+                    <StatisticsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <RequireAuth>
+                    <SettingsPage />
+                  </RequireAuth>
+                }
+              />
             </Route>
             <Route path="/public/:userId" element={<PublicPortfolioPage />} />
             <Route path="*" element={<Navigate to="/info" replace />} />

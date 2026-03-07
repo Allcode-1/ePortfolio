@@ -13,6 +13,7 @@ export interface CvExperienceItem {
   startDate: string;
   endDate: string;
   isCurrent: boolean;
+  rawPeriod: string;
   description: string;
 }
 
@@ -24,6 +25,7 @@ export interface CvEducationItem {
   startDate: string;
   endDate: string;
   isCurrent: boolean;
+  rawPeriod: string;
 }
 
 export interface CvDocument {

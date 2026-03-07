@@ -1,97 +1,59 @@
-# ePortfolio (Spring Boot + React)
+# ePortfolio
 
-`ePortfolio` is a full-stack portfolio platform where users can manage certificates, CVs, projects, public profile links, analytics, AI text improvements, and system notifications.
+Full-stack portfolio platform with private workspace and public profile sharing.
 
-This repository contains:
-- `backend`: Java Spring Boot API
-- `frontend`: React + TypeScript UI
-- `docker-compose.yml`: full local deployment (PostgreSQL + Backend + Frontend)
+## What is implemented
 
-## Core Features
+- Authentication with Clerk JWT on backend APIs
+- Portfolio modules: projects, certificates, CV builder
+- Public profile endpoint with privacy enforcement (`isPublic`)
+- Account settings API (`/api/users/me/settings`) and frontend sync
+- Backend analytics for public views and owner events
+- Notifications with create-once semantics and DB uniqueness
+- AI text improvement endpoints with retry/fallback
+- File uploads to Cloudinary with strict validation and rate limiting
+- Request-level logging with propagated `X-Request-Id`
 
-- Dashboard with profile summary and portfolio counters
-- Certificates management: upload, list, filter, delete
-- CV Builder: multi-document flow, compare, PDF export
-- Projects: GitHub autofill, details page, filtering
-- Public profile page with shareable link
-- Statistics page with activity metrics
-- Real backend notifications (read/read-all)
-- AI assistant endpoints for improving CV/Project/Certificate text
-- RU/EN language switch
+## Stack
 
-## Tech Stack
+- Backend: Java 17, Spring Boot 3, Spring Security OAuth2 Resource Server, Spring Data JPA, PostgreSQL, Redis, Flyway, Actuator, Prometheus metrics
+- Frontend: React 19, TypeScript, Vite, Tailwind CSS, Clerk, Axios
+- Infra: Docker, Docker Compose, Nginx
 
-Backend:
-- Java 17
-- Spring Boot 3
-- Spring Security OAuth2 Resource Server (Clerk JWT)
-- Spring Data JPA + PostgreSQL
-- Cloudinary (file storage)
-- OpenAI API (AI text improvements)
-- Maven
-
-Frontend:
-- React 19 + TypeScript
-- Vite
-- Tailwind CSS
-- Clerk (auth)
-- Axios
-- jsPDF
-
-Infrastructure:
-- Docker + Docker Compose
-- Nginx (frontend container)
-
-## Project Structure
+## Repository layout
 
 ```text
-ePortofolio/
-  backend/                # Spring Boot API
-  frontend/               # React app
-  docker-compose.yml      # Full stack local deploy
-  .env.example            # Root compose/build env example
+backend/                 Spring Boot API
+frontend/                React app
+docker-compose.yml       Full stack: Postgres + Redis + Backend + Frontend
+backend/docker-compose.yml  Backend dependencies only (Postgres + Redis)
+ARCHITECTURE.md          Architecture and data flow notes
 ```
 
-## Environment Setup
+## Quick start (Docker)
 
-### 1 Backend env
-
-```bash
-cp backend/.env.example backend/.env
-```
-
-Fill `backend/.env` with real values:
-- `CLERK_ISSUER_URI`
-- `GITHUB_API_TOKEN`
-- `OPENAI_API_KEY`
-- `OPENAI_MODEL`
-- `OPENAI_MAX_RETRIES`
-- `CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_API_KEY`
-- `CLOUDINARY_API_SECRET`
-
-### 2 Root env for Docker frontend build args
+1. Create env files:
 
 ```bash
 cp .env.example .env
+cp backend/.env.example backend/.env
 ```
 
-Fill:
-- `VITE_CLERK_PUBLISHABLE_KEY`
+2. Fill `backend/.env` secrets (`CLERK_ISSUER_URI`, `OPENAI_API_KEY`, Cloudinary keys, etc).
 
-### 3 Frontend env for local non-docker run
-
-```bash
-cp frontend/.env.example frontend/.env
-```
-
-## Run with Docker (Recommended)
-
-Build and run all services:
+3. Build and run:
 
 ```bash
 docker compose up --build -d
 ```
+
+4. Open services:
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8080`
+- Swagger: `http://localhost:8080/swagger-ui/index.html`
+- Actuator health: `http://localhost:8080/actuator/health`
+- Prometheus metrics: `http://localhost:8080/actuator/prometheus`
 
 Stop:
 
@@ -99,29 +61,21 @@ Stop:
 docker compose down
 ```
 
-Stop and remove volumes:
+Remove volumes:
 
 ```bash
 docker compose down -v
 ```
 
-Endpoints:
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:8080`
-- Swagger UI: `http://localhost:8080/swagger-ui/index.html`
-- PostgreSQL: `localhost:5432`
+## Local development
 
-## Local Development (Without Docker)
-
-### Backend
-
-Option A: run only database in docker
+### Backend dependencies only
 
 ```bash
-docker compose up -d db
+docker compose -f backend/docker-compose.yml up -d
 ```
 
-Then run backend:
+### Backend
 
 ```bash
 cd backend
@@ -139,19 +93,17 @@ cd backend
 
 ```bash
 cd frontend
+cp .env.example .env
 npm ci
 npm run dev
 ```
 
-Frontend dev server: `http://localhost:5173`
-
-## Useful Commands
+## Testing and quality
 
 Backend:
 
 ```bash
 cd backend
-./mvnw -DskipTests compile
 ./mvnw test
 ```
 
@@ -163,27 +115,19 @@ npm run lint
 npm run build
 ```
 
-## Security Notes
+## Logging and observability
 
-- Keep all real tokens/secrets only in `.env` files.
-- Never hardcode secrets in Java/TS code.
-- If any token was exposed earlier, rotate it immediately.
+- Unified backend logs with request correlation (`reqId` from `X-Request-Id`)
+- Request logging filter logs method, path, status, latency, client IP
+- Actuator endpoints enabled: `health`, `info`, `prometheus`
 
-## JVM Crash Logs (hs_err_pid / replay_pid)
+## Security notes
 
-If JVM crashes, files like `hs_err_pid*.log` and `replay_pid*.log` may appear in repo root.  
-They are local crash dumps and should not be committed.
+- Do not commit `.env` files with real secrets
+- Public portfolio endpoint does not expose owner email
+- Upload API validates both metadata and file signatures (magic bytes)
+- API rate limiting is available in-memory and Redis-backed modes
 
-Current setup already ignores them in `.gitignore`.
+## Additional docs
 
-## Removing Old Crash Logs from Git History
-
-If log files were already pushed in old commits, use history rewrite:
-
-```bash
-git filter-repo --path-glob "hs_err_pid*.log" --path-glob "replay_pid*.log" --invert-paths
-git push --force --all
-git push --force --tags
-```
-
-Run this only if you understand force-push impact on collaborators.
+- [Architecture](./ARCHITECTURE.md)

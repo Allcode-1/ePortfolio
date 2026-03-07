@@ -1,10 +1,10 @@
 import { Calendar, ExternalLink, Github, GraduationCap, MapPin, Sparkles, UserRound } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams, useParams } from 'react-router-dom';
+import { analyticsApi } from '../api/analytics';
 import { portfolioApi } from '../api/portfolio';
 import type { PortfolioResponse } from '../types/portfolio';
 import type { PublicProfileTheme } from '../types/appSettings';
-import { bumpAnalytics } from '../utils/analytics';
 import { resolvePublicTheme } from '../utils/publicProfile';
 import type { ProjectApi } from '../types/project';
 
@@ -70,7 +70,7 @@ const PublicPortfolioPage = () => {
           return;
         }
         setPortfolio(data);
-        bumpAnalytics(userId, 'publicViews');
+        void analyticsApi.trackPublicView(userId).catch(() => undefined);
       } catch {
         if (!isMounted) {
           return;
@@ -134,7 +134,7 @@ const PublicPortfolioPage = () => {
             <h1 className="text-[34px] leading-[42px] font-bold text-main mt-2">
               {portfolio.fullName || 'Portfolio owner'}
             </h1>
-            <p className="text-h4 text-muted mt-2">{portfolio.email || 'No email provided'}</p>
+            {portfolio.email && <p className="text-h4 text-muted mt-2">{portfolio.email}</p>}
             <div className="mt-4 inline-flex items-center gap-2 px-3 h-[34px] rounded-full border border-app surface">
               <Sparkles size={14} style={{ color: palette.accent }} />
               <span className="text-h5 text-main">Theme: {theme}</span>
@@ -202,7 +202,12 @@ const PublicPortfolioPage = () => {
                         {(cv.educations ?? []).map((item, index) => (
                           <article key={`${item.institution}-${index}`} className="rounded-tile border border-app surface p-3">
                             <p className="text-h4 text-main">{item.institution || 'Institution'}</p>
-                            <p className="text-h5 text-muted mt-1">{item.degree || 'Degree not specified'}</p>
+                            <p className="text-h5 text-muted mt-1">
+                              {item.profession || item.degree || 'Education details not specified'}
+                            </p>
+                            {item.profession && item.degree && (
+                              <p className="text-h5 text-muted mt-1">{item.degree}</p>
+                            )}
                             <p className="text-h5 text-muted mt-1">{item.year || 'Year not specified'}</p>
                           </article>
                         ))}

@@ -31,9 +31,15 @@ public class CVController {
         return cvService.saveOrUpdateCV(user, request);
     }
 
+    @GetMapping
+    public CV getMyCV(@AuthenticationPrincipal Jwt jwt) {
+        User user = userService.getOrCreateUser(jwt.getSubject(), jwt.getClaimAsString("email"), "User");
+        return cvService.getCV(user);
+    }
+
     @DeleteMapping
     public void deleteMyCV(@AuthenticationPrincipal Jwt jwt) {
         User user = userService.getOrCreateUser(jwt.getSubject(), jwt.getClaimAsString("email"), "User");
         cvService.deleteCV(user);
-}
+    }
 }

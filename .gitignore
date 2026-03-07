@@ -1,31 +1,51 @@
-# OS / editor
+# OS
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# IDE
 .idea/
 .vscode/
 *.iml
 
-# Environment / secrets
+# Environment and secrets
 .env
 .env.*
 !.env.example
 !.env.*.example
+backend/.env
+frontend/.env
 
-# Node
+# Node / frontend
 node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
-
-# Java / Maven
-**/target/
-**/build/
-
-# Logs / JVM crash dumps
-*.log
-hs_err_pid*.log
-replay_pid*.log
+frontend/.cache/
+frontend/.eslintcache
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Java / Maven / Gradle
+**/target/
+**/build/
+*.class
+*.jar
+*.war
+*.ear
+.m2/
+
+# Coverage and reports
+coverage/
+*.lcov
+
+# Logs and crash dumps
+*.log
+hs_err_pid*.log
+replay_pid*.log
+
+# Misc
+*.tmp
+*.swp

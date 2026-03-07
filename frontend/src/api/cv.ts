@@ -1,11 +1,11 @@
 import type { Cv, CvSavePayload } from '../types/cv';
 import { apiClient, getAuthHeaders, type TokenGetter } from './client';
-import { portfolioApi } from './portfolio';
 
 export const cvApi = {
-  async getByUserId(userId: string) {
-    const response = await portfolioApi.getByUserId(userId);
-    return response.cv as Cv | null | undefined;
+  async getMine(getToken: TokenGetter) {
+    const headers = await getAuthHeaders(getToken);
+    const response = await apiClient.get<Cv | null>('/api/cv', { headers });
+    return response.data;
   },
 
   async save(payload: CvSavePayload, getToken: TokenGetter) {

@@ -1,8 +1,8 @@
 import { useAuth, useUser } from '@clerk/clerk-react';
 import { ArrowLeft, Download, LoaderCircle, Plus, Star, Trash2, WandSparkles } from 'lucide-react';
-import { jsPDF } from 'jspdf';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { aiApi } from '../api/ai';
+import { analyticsApi } from '../api/analytics';
 import { cvApi } from '../api/cv';
 import {
   citySuggestions,
@@ -18,7 +18,6 @@ import { useCv } from '../hooks/useCv';
 import { useCvDocuments } from '../hooks/useCvDocuments';
 import { useI18n } from '../i18n/useI18n';
 import type { CvDocument, CvEducationItem, CvExperienceItem, CvSkill } from '../types/cvDocument';
-import { bumpAnalytics } from '../utils/analytics';
 import { createId } from '../utils/createId';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 
@@ -46,6 +45,7 @@ const createEmptyExperience = (): CvExperienceItem => ({
   startDate: '',
   endDate: '',
   isCurrent: true,
+  rawPeriod: '',
   description: '',
 });
 
@@ -57,6 +57,7 @@ const createEmptyEducation = (): CvEducationItem => ({
   startDate: '',
   endDate: '',
   isCurrent: false,
+  rawPeriod: '',
 });
 
 const createInitialFormState = (userName?: string | null): CvFormState => ({
@@ -70,15 +71,50 @@ const createInitialFormState = (userName?: string | null): CvFormState => ({
   educations: [createEmptyEducation()],
 });
 
-const toPeriod = (startDate: string, endDate: string, isCurrent: boolean) => {
+const toPeriod = (startDate: string, endDate: string, isCurrent: boolean, rawPeriod = '') => {
+  if (!startDate && !endDate && !isCurrent) {
+    return rawPeriod.trim();
+  }
+
   const start = startDate || 'Start';
   const end = isCurrent ? 'Present' : endDate || 'End';
   return `${start} - ${end}`;
 };
 
+const parsePeriod = (value?: string | null) => {
+  const source = value?.trim() ?? '';
+
+  if (!source) {
+    return { startDate: '', endDate: '', isCurrent: false, rawPeriod: '' };
+  }
+
+  const parts = source.split(' - ').map((part) => part.trim());
+  if (parts.length !== 2) {
+    return { startDate: '', endDate: '', isCurrent: false, rawPeriod: source };
+  }
+
+  const [left, right] = parts;
+  const isValidDate = (candidate: string) => /^\d{4}-\d{2}-\d{2}$/.test(candidate);
+  const isCurrent = right.toLowerCase() === 'present';
+  const isDateRange = isValidDate(left) && (isCurrent || isValidDate(right));
+
+  if (!isDateRange) {
+    return { startDate: '', endDate: '', isCurrent: false, rawPeriod: source };
+  }
+
+  return {
+    startDate: left,
+    endDate: isCurrent ? '' : right,
+    isCurrent,
+    rawPeriod: '',
+  };
+};
+
 const hasSkillData = (skill: CvSkill) => skill.name.trim().length > 0;
-const hasExperienceData = (item: CvExperienceItem) => item.company || item.position || item.description;
-const hasEducationData = (item: CvEducationItem) => item.institution || item.profession || item.degree;
+const hasExperienceData = (item: CvExperienceItem) =>
+  item.company || item.position || item.description || item.rawPeriod?.trim();
+const hasEducationData = (item: CvEducationItem) =>
+  item.institution || item.profession || item.degree || item.rawPeriod?.trim();
 const quickSkillSuggestions = skillSuggestions.slice(0, 24);
 type CvSortField = 'title' | 'createdAt' | 'updatedAt';
 type CvSortOrder = 'asc' | 'desc';
@@ -128,20 +164,16 @@ const CvBuilderPage = () => {
           id: createId(),
           company: experience.company ?? '',
           position: experience.position ?? '',
-          startDate: '',
-          endDate: '',
-          isCurrent: true,
-          description: experience.period ?? '',
+          ...parsePeriod(experience.period),
+          description: '',
         })) ?? [],
       educations:
         cv.educations?.map((education) => ({
           id: createId(),
           institution: education.institution ?? '',
-          profession: education.degree ?? '',
-          degree: education.year ?? '',
-          startDate: '',
-          endDate: '',
-          isCurrent: false,
+          profession: education.profession ?? '',
+          degree: education.degree ?? '',
+          ...parsePeriod(education.year),
         })) ?? [],
       createdAt: nowIso,
       updatedAt: nowIso,
@@ -210,12 +242,13 @@ const CvBuilderPage = () => {
         experiences: document.experiences.filter(hasExperienceData).map((item) => ({
           company: item.company || 'Company',
           position: item.position || 'Position',
-          period: toPeriod(item.startDate, item.endDate, item.isCurrent),
+          period: toPeriod(item.startDate, item.endDate, item.isCurrent, item.rawPeriod ?? ''),
         })),
         educations: document.educations.filter(hasEducationData).map((item) => ({
           institution: item.institution || '',
-          degree: item.profession || item.degree || '',
-          year: toPeriod(item.startDate, item.endDate, item.isCurrent),
+          profession: item.profession || '',
+          degree: item.degree || '',
+          year: toPeriod(item.startDate, item.endDate, item.isCurrent, item.rawPeriod ?? ''),
         })),
       },
       getToken,
@@ -243,11 +276,11 @@ const CvBuilderPage = () => {
           : [createEmptySkill()],
       experiences:
         document.experiences.length > 0
-          ? document.experiences.map((item) => ({ ...item }))
+          ? document.experiences.map((item) => ({ ...item, rawPeriod: item.rawPeriod ?? '' }))
           : [createEmptyExperience()],
       educations:
         document.educations.length > 0
-          ? document.educations.map((item) => ({ ...item }))
+          ? document.educations.map((item) => ({ ...item, rawPeriod: item.rawPeriod ?? '' }))
           : [createEmptyEducation()],
     });
     setIsCreating(true);
@@ -280,15 +313,16 @@ const CvBuilderPage = () => {
     };
 
     try {
+      const cvForBackend =
+        editingId && !nextDocument.isPrimary ? primaryDocument : nextDocument;
+      await syncDocumentToBackend(cvForBackend);
+
       if (editingId) {
         updateDocument(editingId, nextDocument);
       } else {
         addDocument(nextDocument);
       }
 
-      const cvForBackend =
-        editingId && !nextDocument.isPrimary ? primaryDocument : nextDocument;
-      await syncDocumentToBackend(cvForBackend);
       setSuccessMessage(t('cv.saveSuccess', 'CV saved and synced to backend.'));
       setIsCreating(false);
     } catch (requestError) {
@@ -308,8 +342,8 @@ const CvBuilderPage = () => {
       const nextPrimary =
         nextDocuments.find((document) => document.isPrimary) ?? nextDocuments[nextDocuments.length - 1] ?? null;
 
-      deleteDocument(documentId);
       await syncDocumentToBackend(nextPrimary);
+      deleteDocument(documentId);
       setSuccessMessage('CV deleted.');
     } catch (requestError) {
       setActionError(getApiErrorMessage(requestError, 'Failed to delete CV.'));
@@ -328,8 +362,8 @@ const CvBuilderPage = () => {
     }
 
     try {
-      setPrimaryDocument(documentId);
       await syncDocumentToBackend({ ...selected, isPrimary: true, updatedAt: new Date().toISOString() });
+      setPrimaryDocument(documentId);
       setSuccessMessage('Primary CV updated.');
     } catch (requestError) {
       setActionError(getApiErrorMessage(requestError, 'Failed to set primary CV.'));
@@ -430,11 +464,12 @@ const CvBuilderPage = () => {
     });
   };
 
-  const handleDownloadPdf = (document: CvDocument) => {
+  const handleDownloadPdf = async (document: CvDocument) => {
     if (user?.id) {
-      bumpAnalytics(user.id, 'cvDownloads');
+      void analyticsApi.trackMyEvent('cvDownloads', getToken).catch(() => undefined);
     }
 
+    const { jsPDF } = await import('jspdf');
     const pdf = new jsPDF();
     const pageWidth = pdf.internal.pageSize.getWidth();
     const margin = 14;
@@ -503,7 +538,7 @@ const CvBuilderPage = () => {
         pdf.text(`${item.position || 'Position'} @ ${item.company || 'Company'}`, margin, y);
         y += 5;
         pdf.setFont('helvetica', 'normal');
-        pdf.text(toPeriod(item.startDate, item.endDate, item.isCurrent), margin, y);
+        pdf.text(toPeriod(item.startDate, item.endDate, item.isCurrent, item.rawPeriod ?? ''), margin, y);
         y += 5;
         if (item.description) {
           const details = pdf.splitTextToSize(item.description, pageWidth - margin * 2);
@@ -532,7 +567,7 @@ const CvBuilderPage = () => {
           y,
         );
         y += 5;
-        pdf.text(toPeriod(item.startDate, item.endDate, item.isCurrent), margin, y);
+        pdf.text(toPeriod(item.startDate, item.endDate, item.isCurrent, item.rawPeriod ?? ''), margin, y);
         y += 7;
       });
     }
@@ -644,7 +679,9 @@ const CvBuilderPage = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDownloadPdf(document)}
+                    onClick={() => {
+                      void handleDownloadPdf(document);
+                    }}
                     className="h-[36px] px-3 rounded-[12px] border border-app text-h5 text-main inline-flex items-center gap-1"
                   >
                     <Download size={14} />
@@ -941,7 +978,7 @@ const CvBuilderPage = () => {
                       type="date"
                       value={item.startDate}
                       onChange={(event) =>
-                        updateExperience(item.id, { startDate: event.target.value })
+                        updateExperience(item.id, { startDate: event.target.value, rawPeriod: '' })
                       }
                     />
                     <input
@@ -950,7 +987,20 @@ const CvBuilderPage = () => {
                       disabled={item.isCurrent}
                       value={item.endDate}
                       onChange={(event) =>
-                        updateExperience(item.id, { endDate: event.target.value })
+                        updateExperience(item.id, { endDate: event.target.value, rawPeriod: '' })
+                      }
+                    />
+                    <input
+                      className={`${inputClass} md:col-span-2`}
+                      placeholder="Custom period (optional)"
+                      value={item.rawPeriod ?? ''}
+                      onChange={(event) =>
+                        updateExperience(item.id, {
+                          rawPeriod: event.target.value,
+                          startDate: '',
+                          endDate: '',
+                          isCurrent: false,
+                        })
                       }
                     />
                   </div>
@@ -965,6 +1015,7 @@ const CvBuilderPage = () => {
                           updateExperience(item.id, {
                             isCurrent: event.target.checked,
                             endDate: event.target.checked ? '' : item.endDate,
+                            rawPeriod: '',
                           })
                         }
                       />
@@ -1070,7 +1121,7 @@ const CvBuilderPage = () => {
                       type="date"
                       value={item.startDate}
                       onChange={(event) =>
-                        updateEducation(item.id, { startDate: event.target.value })
+                        updateEducation(item.id, { startDate: event.target.value, rawPeriod: '' })
                       }
                     />
                     <input
@@ -1079,7 +1130,20 @@ const CvBuilderPage = () => {
                       disabled={item.isCurrent}
                       value={item.endDate}
                       onChange={(event) =>
-                        updateEducation(item.id, { endDate: event.target.value })
+                        updateEducation(item.id, { endDate: event.target.value, rawPeriod: '' })
+                      }
+                    />
+                    <input
+                      className={`${inputClass} md:col-span-2`}
+                      placeholder="Year or period (optional)"
+                      value={item.rawPeriod ?? ''}
+                      onChange={(event) =>
+                        updateEducation(item.id, {
+                          rawPeriod: event.target.value,
+                          startDate: '',
+                          endDate: '',
+                          isCurrent: false,
+                        })
                       }
                     />
                   </div>
@@ -1094,6 +1158,7 @@ const CvBuilderPage = () => {
                           updateEducation(item.id, {
                             isCurrent: event.target.checked,
                             endDate: event.target.checked ? '' : item.endDate,
+                            rawPeriod: '',
                           })
                         }
                       />

@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/public")
-@CrossOrigin("*")
 public class PublicController {
 
     private final UserService userService;
@@ -22,7 +21,7 @@ public class PublicController {
     // userid access (id from clerk)
     @GetMapping("/portfolio/{userId}")
     public PortfolioResponse getPortfolio(@PathVariable String userId) {
-        PortfolioResponse response = userService.getFullPortfolio(userId);
+        PortfolioResponse response = userService.getPublicPortfolio(userId);
         notificationService.createOnceByUserId(
             userId,
             NotificationType.FIRST_PUBLIC_PROFILE_VIEW,

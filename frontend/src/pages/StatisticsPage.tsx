@@ -1,11 +1,12 @@
-import { useUser } from '@clerk/clerk-react';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import { ArrowUpRight, BarChart3, Eye, FileDown, Link2, MonitorPlay, NotebookTabs } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { analyticsApi } from '../api/analytics';
 import { useCertificates } from '../hooks/useCertificates';
 import { useCvDocuments } from '../hooks/useCvDocuments';
 import { useProjects } from '../hooks/useProjects';
-import { readAnalytics } from '../utils/analytics';
+import type { AnalyticsSnapshot } from '../types/analytics';
 import { getPublicProfileLink } from '../utils/publicProfile';
 import { useAppSettings } from '../hooks/useAppSettings';
 
@@ -22,13 +23,48 @@ const buildRecentMonths = (count: number) => {
 
 const StatisticsPage = () => {
   const navigate = useNavigate();
+  const { getToken } = useAuth();
   const { user } = useUser();
   const { settings } = useAppSettings();
   const { certificates } = useCertificates();
   const { projects } = useProjects();
   const { documents } = useCvDocuments();
 
-  const analytics = user?.id ? readAnalytics(user.id) : null;
+  const [analytics, setAnalytics] = useState<AnalyticsSnapshot | null>(null);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    let active = true;
+
+    const loadAnalytics = async () => {
+      try {
+        const snapshot = await analyticsApi.getMine(getToken);
+        if (!active) {
+          return;
+        }
+
+        setAnalytics(snapshot);
+        setAnalyticsError(null);
+      } catch {
+        if (!active) {
+          return;
+        }
+
+        setAnalytics(null);
+        setAnalyticsError('Failed to load analytics.');
+      }
+    };
+
+    void loadAnalytics();
+
+    return () => {
+      active = false;
+    };
+  }, [getToken, user?.id]);
 
   const chartData = useMemo(() => {
     if (!analytics) {
@@ -148,6 +184,8 @@ const StatisticsPage = () => {
             </button>
           </div>
         </div>
+
+        {analyticsError && <p className="text-h5 text-red-500 mt-3">{analyticsError}</p>}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mt-6">
           {cards.map((card) => (

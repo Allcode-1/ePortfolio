@@ -1,9 +1,9 @@
-import { useUser } from '@clerk/clerk-react';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import { ArrowLeft, Calendar, ExternalLink, Github, Layers3, MonitorPlay } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { analyticsApi } from '../api/analytics';
 import { useProjects } from '../hooks/useProjects';
-import { bumpAnalytics } from '../utils/analytics';
 
 const formatDate = (value?: string | null) => {
   if (!value) {
@@ -18,6 +18,7 @@ const formatDate = (value?: string | null) => {
 
 const ProjectDetailPage = () => {
   const navigate = useNavigate();
+  const { getToken } = useAuth();
   const { user } = useUser();
   const { projectId } = useParams<{ projectId: string }>();
   const { projects, isLoading, error } = useProjects();
@@ -30,9 +31,9 @@ const ProjectDetailPage = () => {
 
   useEffect(() => {
     if (project && user?.id) {
-      bumpAnalytics(user.id, 'projectDetailViews');
+      void analyticsApi.trackMyEvent('projectDetailViews', getToken).catch(() => undefined);
     }
-  }, [project, user?.id]);
+  }, [getToken, project, user?.id]);
 
   if (isLoading) {
     return (

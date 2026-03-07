@@ -15,6 +15,8 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -143,8 +145,12 @@ class CVServiceTest {
         when(cvRepository.findByUser(user)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> cvService.deleteCV(user))
-            .isInstanceOf(RuntimeException.class)
-            .hasMessage("CV not found for this user");
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(ex -> {
+                ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+                assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(responseStatusException.getReason()).isEqualTo("CV not found for this user");
+            });
 
         verify(experienceRepository, never()).deleteByCv(any(CV.class));
         verify(educationRepository, never()).deleteByCv(any(CV.class));

@@ -1,6 +1,7 @@
 package com.example.demo.services;
 
 import com.example.demo.dto.PortfolioResponse;
+import com.example.demo.dto.user.UserSettingsResponse;
 import com.example.demo.enums.NotificationType;
 import com.example.demo.models.CV;
 import com.example.demo.models.Certificate;
@@ -15,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -117,8 +120,12 @@ class UserServiceTest {
         when(userRepository.findById("unknown")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.getFullPortfolio("unknown"))
-            .isInstanceOf(RuntimeException.class)
-            .hasMessage("User not found");
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(ex -> {
+                ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+                assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(responseStatusException.getReason()).isEqualTo("User not found");
+            });
     }
 
     @Test
@@ -138,9 +145,64 @@ class UserServiceTest {
         when(userRepository.findById("clerk-5")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.deleteUser("clerk-5"))
-            .isInstanceOf(RuntimeException.class)
-            .hasMessage("User not found");
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(ex -> {
+                ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+                assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(responseStatusException.getReason()).isEqualTo("User not found");
+            });
 
         verify(userRepository, never()).delete(any(User.class));
+    }
+
+    @Test
+    void getPublicPortfolio_whenProfileIsPrivate_throwsNotFound() {
+        User privateUser = new User();
+        privateUser.setId("private-user");
+        privateUser.setPublic(false);
+
+        when(userRepository.findById("private-user")).thenReturn(Optional.of(privateUser));
+
+        assertThatThrownBy(() -> userService.getPublicPortfolio("private-user"))
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(ex -> {
+                ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+                assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(responseStatusException.getReason()).isEqualTo("Public profile not found");
+            });
+    }
+
+    @Test
+    void getPublicPortfolio_whenProfileIsPublic_hidesEmail() {
+        User publicUser = new User();
+        publicUser.setId("public-user");
+        publicUser.setPublic(true);
+        publicUser.setFullName("Visible User");
+        publicUser.setEmail("visible@example.com");
+
+        when(userRepository.findById("public-user")).thenReturn(Optional.of(publicUser));
+        when(projectRepository.findByUser(publicUser)).thenReturn(List.of());
+        when(certificateRepository.findByUser(publicUser)).thenReturn(List.of());
+        when(cvRepository.findByUser(publicUser)).thenReturn(Optional.empty());
+
+        PortfolioResponse response = userService.getPublicPortfolio("public-user");
+
+        assertThat(response.getFullName()).isEqualTo("Visible User");
+        assertThat(response.getEmail()).isNull();
+    }
+
+    @Test
+    void updateSettings_updatesVisibilityAndReturnsDto() {
+        User user = new User();
+        user.setId("settings-user");
+        user.setPublic(false);
+
+        when(userRepository.save(user)).thenReturn(user);
+
+        UserSettingsResponse response = userService.updateSettings(user, "public");
+
+        assertThat(user.isPublic()).isTrue();
+        assertThat(response.getAccountVisibility()).isEqualTo("public");
+        verify(userRepository).save(user);
     }
 }

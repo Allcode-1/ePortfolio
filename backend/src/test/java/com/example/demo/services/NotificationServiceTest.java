@@ -10,6 +10,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -72,8 +74,12 @@ class NotificationServiceTest {
         when(notificationRepository.findByIdAndUser(3L, user)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> notificationService.markAsRead(3L, user))
-            .isInstanceOf(RuntimeException.class)
-            .hasMessage("Notification not found");
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(ex -> {
+                ResponseStatusException responseStatusException = (ResponseStatusException) ex;
+                assertThat(responseStatusException.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(responseStatusException.getReason()).isEqualTo("Notification not found");
+            });
     }
 
     @Test

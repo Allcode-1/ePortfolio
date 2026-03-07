@@ -10,6 +10,8 @@ import jakarta.transaction.Transactional;
 import com.example.demo.dto.CertificateRequest;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class CertificateService {
@@ -46,10 +48,10 @@ public class CertificateService {
     @Transactional
     public Certificate updateCertificate(Long id, CertificateRequest request, User user) {
         Certificate cert = certificateRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Certificate not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Certificate not found"));
 
         if (!cert.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Access denied");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
 
         applyRequest(cert, request);
@@ -59,10 +61,10 @@ public class CertificateService {
 
     public void deleteCertificate(Long id, User user) {
         Certificate cert = certificateRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Sertificate not found"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Certificate not found"));
         
         if (!cert.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Not enough permissions to delete this certificate");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not enough permissions to delete this certificate");
         }
         
         certificateRepository.delete(cert);

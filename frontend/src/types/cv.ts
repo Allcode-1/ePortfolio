@@ -8,6 +8,7 @@ export interface Experience {
 export interface Education {
   id?: number;
   institution?: string | null;
+  profession?: string | null;
   degree?: string | null;
   year?: string | null;
 }

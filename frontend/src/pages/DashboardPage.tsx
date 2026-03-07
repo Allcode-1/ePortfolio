@@ -1,4 +1,4 @@
-import { useUser } from '@clerk/clerk-react';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import { Calendar, Copy, GraduationCap, MapPin, Pencil, Route, Trophy, UserRound } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { useCv } from '../hooks/useCv';
 import { useCvDocuments } from '../hooks/useCvDocuments';
 import { useProfileSettings } from '../hooks/useProfileSettings';
 import { useProjects } from '../hooks/useProjects';
-import { bumpAnalytics } from '../utils/analytics';
+import { analyticsApi } from '../api/analytics';
 import { getPublicProfileLink } from '../utils/publicProfile';
 
 const formatDate = (value: string) => {
@@ -47,6 +47,7 @@ const getAgeText = (birthDate: string) => {
 
 const DashboardPage = () => {
   const navigate = useNavigate();
+  const { getToken } = useAuth();
   const { user } = useUser();
   const { settings } = useProfileSettings();
   const { settings: appSettings } = useAppSettings();
@@ -140,7 +141,7 @@ const DashboardPage = () => {
                     return;
                   }
                   void navigator.clipboard.writeText(publicLink);
-                  bumpAnalytics(user.id, 'shareClicks');
+                  void analyticsApi.trackMyEvent('shareClicks', getToken).catch(() => undefined);
                   setCopyState('Public link copied');
                   window.setTimeout(() => setCopyState(null), 1600);
                 }}

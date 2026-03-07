@@ -1,16 +1,20 @@
 package com.example.demo.services;
 
 import com.example.demo.dto.PortfolioResponse;
+import com.example.demo.dto.user.UserSettingsResponse;
 import com.example.demo.enums.NotificationType;
 import com.example.demo.models.User;
 import com.example.demo.repositories.*;
-
 import jakarta.transaction.Transactional;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class UserService {
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
@@ -50,7 +54,7 @@ public class UserService {
 
     public PortfolioResponse getFullPortfolio(String userId) {
         User user = userRepository.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         PortfolioResponse response = new PortfolioResponse();
         response.setFullName(user.getFullName());
@@ -63,10 +67,41 @@ public class UserService {
         return response;
     }
 
+    public PortfolioResponse getPublicPortfolio(String userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Public profile not found"));
+
+        if (!user.isPublic()) {
+            log.info("Blocked private profile access for userId={}", userId);
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Public profile not found");
+        }
+
+        PortfolioResponse response = new PortfolioResponse();
+        response.setFullName(user.getFullName());
+        response.setEmail(null);
+        response.setCv(cvRepository.findByUser(user).orElse(null));
+        response.setProjects(projectRepository.findByUser(user));
+        response.setCertificates(certificateRepository.findByUser(user));
+        return response;
+    }
+
+    public UserSettingsResponse getSettings(User user) {
+        return new UserSettingsResponse(user.isPublic() ? "public" : "private");
+    }
+
+    @Transactional
+    public UserSettingsResponse updateSettings(User user, String accountVisibility) {
+        boolean nextPublic = "public".equalsIgnoreCase(accountVisibility);
+        user.setPublic(nextPublic);
+        userRepository.save(user);
+        log.info("Updated account visibility for userId={} to {}", user.getId(), nextPublic ? "public" : "private");
+        return getSettings(user);
+    }
+
     @Transactional
     public void deleteUser(String clerkId) {
         User user = userRepository.findById(clerkId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         
         userRepository.delete(user);
     }

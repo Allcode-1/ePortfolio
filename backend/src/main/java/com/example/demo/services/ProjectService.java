@@ -10,6 +10,8 @@ import jakarta.transaction.Transactional;
 
 import org.springframework.stereotype.Service;
 import java.util.List;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class ProjectService {
@@ -57,10 +59,10 @@ public class ProjectService {
     @Transactional
     public Project updateProject(Long id, ProjectDTO dto, User user) {
         Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
 
         if (!project.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Access denied: You are not the owner of this project");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: You are not the owner of this project");
         }
 
         project.setTitle(dto.getTitle());
@@ -81,10 +83,10 @@ public class ProjectService {
 
     public void deleteProject(Long id, User user) {
         Project project = projectRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
 
         if (!project.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("Access denied: You cannot delete this project");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: You cannot delete this project");
         }
 
         projectRepository.delete(project);

@@ -1,13 +1,12 @@
-import { useUser } from '@clerk/clerk-react';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import { useCallback, useEffect, useState } from 'react';
 import { cvApi } from '../api/cv';
 import type { Cv } from '../types/cv';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 
-const isUserNotFoundMessage = (message: string) => message.toLowerCase().includes('user not found');
-
 export const useCv = () => {
-  const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
+  const { user, isLoaded, isSignedIn } = useUser();
   const [cv, setCv] = useState<Cv | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +16,7 @@ export const useCv = () => {
       return;
     }
 
-    if (!user?.id) {
+    if (!isSignedIn || !user?.id) {
       setCv(null);
       setError(null);
       setIsLoading(false);
@@ -28,21 +27,14 @@ export const useCv = () => {
     setError(null);
 
     try {
-      const data = await cvApi.getByUserId(user.id);
+      const data = await cvApi.getMine(getToken);
       setCv(data ?? null);
     } catch (requestError) {
-      const message = getApiErrorMessage(requestError, 'Failed to load CV data.');
-
-      if (isUserNotFoundMessage(message)) {
-        setCv(null);
-        setError(null);
-      } else {
-        setError(message);
-      }
+      setError(getApiErrorMessage(requestError, 'Failed to load CV data.'));
     } finally {
       setIsLoading(false);
     }
-  }, [isLoaded, user?.id]);
+  }, [getToken, isLoaded, isSignedIn, user?.id]);
 
   useEffect(() => {
     void reload();

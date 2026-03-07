@@ -2,10 +2,14 @@ package com.example.demo.services;
 
 import com.example.demo.dto.ai.AiImproveRequest;
 import com.example.demo.dto.ai.AiImproveResponse;
+import com.example.demo.exceptions.ApiException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -24,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class AiAssistantService {
+    private static final Logger log = LoggerFactory.getLogger(AiAssistantService.class);
 
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(40);
@@ -69,7 +74,11 @@ public class AiAssistantService {
 
     private AiImproveResponse improveText(String domain, AiImproveRequest request) {
         if (!StringUtils.hasText(openAiApiKey)) {
-            throw new RuntimeException("OPENAI_API_KEY is not configured on backend.");
+            throw new ApiException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "AI_NOT_CONFIGURED",
+                "AI provider is not configured on server."
+            );
         }
 
         String language = normalizeLanguage(request.getLanguage());
@@ -152,21 +161,38 @@ public class AiAssistantService {
                     continue;
                 }
 
-                throw new RuntimeException(buildOpenAiError(status, response.body()));
+                throw new ApiException(
+                    HttpStatus.BAD_GATEWAY,
+                    "AI_PROVIDER_ERROR",
+                    buildOpenAiError(status, response.body())
+                );
             } catch (IOException ex) {
                 if (attempt < maxRetries) {
                     try {
                         sleep(resolveBackoff(attempt));
                     } catch (InterruptedException interruptedEx) {
                         Thread.currentThread().interrupt();
-                        throw new RuntimeException("AI request interrupted.", interruptedEx);
+                        throw new ApiException(
+                            HttpStatus.SERVICE_UNAVAILABLE,
+                            "AI_REQUEST_INTERRUPTED",
+                            "AI request was interrupted."
+                        );
                     }
                     continue;
                 }
-                throw new RuntimeException("Failed to process AI response.", ex);
+                log.error("AI provider I/O failure: {}", ex.getMessage(), ex);
+                throw new ApiException(
+                    HttpStatus.BAD_GATEWAY,
+                    "AI_PROVIDER_UNAVAILABLE",
+                    "Failed to reach AI provider."
+                );
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
-                throw new RuntimeException("AI request interrupted.", ex);
+                throw new ApiException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "AI_REQUEST_INTERRUPTED",
+                    "AI request was interrupted."
+                );
             }
         }
 
@@ -400,6 +426,11 @@ SOURCE_TEXT:
         if (responseCache.size() > 400) {
             long now = System.currentTimeMillis();
             responseCache.entrySet().removeIf(entry -> now - entry.getValue().savedAtMs() > CACHE_TTL.toMillis());
+        }
+
+        if (responseCache.size() > 400) {
+            int toRemove = responseCache.size() - 400;
+            responseCache.keySet().stream().limit(toRemove).forEach(responseCache::remove);
         }
     }
 
